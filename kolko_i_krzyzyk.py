@@ -10,6 +10,8 @@ img_counter = 0
 vision = False
 
 while True:
+    plansza = [["","",""],["","",""],["","",""]]
+
     ret, frame = cam.read()
 
     img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -25,6 +27,9 @@ while True:
     img = cv2.erode(img, (5, 5), iterations=5)
 
     lines = cv2.HoughLines(img, 1, np.pi / 30, 200)
+
+    circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 20,
+                            param1 = 50, param2 = 30, minRadius = 0, maxRadius = 0)
 
     if lines is not None and len(lines) < 50:
         newlines = np.zeros((4, 1, 2))
@@ -59,28 +64,61 @@ while True:
                 temp[0][1] = (y2 * x1 - x2 * y1) / (x1 - x2)
                 newlines[i] = temp
                 cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-            print(newlines)
-            xy = np.zeros((4,2))
-            xy[0][1] = -(newlines[2][0][1] - newlines[0][0][1]) / (newlines[2][0][0] - newlines[0][0][0])
-            xy[0][0] = newlines[0][0][0] * xy[0][1] + newlines[0][0][1]
-            xy[1][1] = -(newlines[3][0][1] - newlines[0][0][1]) / (newlines[3][0][0] - newlines[0][0][0])
-            xy[1][0] = newlines[0][0][0] * xy[1][1] + newlines[0][0][1]
-            xy[2][1] = -(newlines[2][0][1] - newlines[1][0][1]) / (newlines[2][0][0] - newlines[1][0][0])
-            xy[2][0] = newlines[1][0][0] * xy[2][1] + newlines[1][0][1]
-            xy[3][1] = -(newlines[3][0][1] - newlines[1][0][1]) / (newlines[3][0][0] - newlines[1][0][0])
-            xy[3][0] = newlines[1][0][0] * xy[3][1] + newlines[1][0][1]
+
+            xy = np.zeros((4, 4, 2))
+            xy[1][1][1] = -(newlines[2][0][1] - newlines[0][0][1]) / (newlines[2][0][0] - newlines[0][0][0])
+            xy[1][1][0] = newlines[0][0][0] * xy[1][1][1] + newlines[0][0][1]
+            xy[1][2][1] = -(newlines[3][0][1] - newlines[0][0][1]) / (newlines[3][0][0] - newlines[0][0][0])
+            xy[1][2][0] = newlines[0][0][0] * xy[1][2][1] + newlines[0][0][1]
+            xy[2][1][1] = -(newlines[2][0][1] - newlines[1][0][1]) / (newlines[2][0][0] - newlines[1][0][0])
+            xy[2][1][0] = newlines[1][0][0] * xy[2][1][1] + newlines[1][0][1]
+            xy[2][2][1] = -(newlines[3][0][1] - newlines[1][0][1]) / (newlines[3][0][0] - newlines[1][0][0])
+            xy[2][2][0] = newlines[1][0][0] * xy[2][2][1] + newlines[1][0][1]
+            xy[0][1][1] = xy[1][1][1] + (xy[1][1][1] - xy[2][1][1])
+            xy[0][1][0] = xy[1][1][0] + (xy[1][1][0] - xy[2][1][0])
+            xy[0][2][1] = xy[1][2][1] + (xy[1][2][1] - xy[2][2][1])
+            xy[0][2][0] = xy[1][2][0] + (xy[1][2][0] - xy[2][2][0])
+            xy[1][0][1] = xy[1][1][1] + (xy[1][1][1] - xy[1][2][1])
+            xy[1][0][0] = xy[1][1][0] + (xy[1][1][0] - xy[1][2][0])
+            xy[2][0][1] = xy[2][1][1] + (xy[2][1][1] - xy[2][2][1])
+            xy[2][0][0] = xy[2][1][0] + (xy[2][1][0] - xy[2][2][0])
+            xy[3][1][1] = xy[2][1][1] + (xy[2][1][1] - xy[1][1][1])
+            xy[3][1][0] = xy[2][1][0] + (xy[2][1][0] - xy[1][1][0])
+            xy[3][2][1] = xy[2][2][1] + (xy[2][2][1] - xy[1][2][1])
+            xy[3][2][0] = xy[2][2][0] + (xy[2][2][0] - xy[1][2][0])
+            xy[1][3][1] = xy[1][2][1] + (xy[1][2][1] - xy[1][1][1])
+            xy[1][3][0] = xy[1][2][0] + (xy[1][2][0] - xy[1][1][0])
+            xy[2][3][1] = xy[2][2][1] + (xy[2][2][1] - xy[2][1][1])
+            xy[2][3][0] = xy[2][2][0] + (xy[2][2][0] - xy[2][1][0])
+            xy[0][0][1] = xy[0][1][1] + (xy[0][1][1] - xy[0][2][1])
+            xy[0][0][0] = xy[0][1][0] + (xy[0][1][0] - xy[0][2][0])
+            xy[0][3][1] = xy[0][2][1] + (xy[0][2][1] - xy[0][1][1])
+            xy[0][3][0] = xy[0][2][0] + (xy[0][2][0] - xy[0][1][0])
+            xy[3][0][1] = xy[3][1][1] + (xy[3][1][1] - xy[3][2][1])
+            xy[3][0][0] = xy[3][1][0] + (xy[3][1][0] - xy[3][2][0])
+            xy[3][3][1] = xy[3][2][1] + (xy[3][2][1] - xy[3][1][1])
+            xy[3][3][0] = xy[3][2][0] + (xy[3][2][0] - xy[3][1][0])
+
             h = 0
-            print(xy)
             for i in range(4):
-                if xy[i][1] <= 0 or xy[i][1] >= len(frame):
-                    h = 1
-                if xy[i][0] <= 0 or xy[i][0] >= len(frame[0]):
-                    h = 1
+                for j in range(4):
+                    if xy[i][j][1] < 0 or xy[i][j][1] >= len(frame[0]):
+                        h = 1
+                    if xy[i][j][0] < 0 or xy[i][j][0] >= len(frame):
+                        h = 1
             if h == 0:
+                #print(xy)
                 for i in range(4):
-                    for j in range(-2, 3):
+                    for j in range(4):
                         for n in range(-2, 3):
-                            frame[int(xy[i][0]) + j][int(xy[i][1]) + n] = (0, 255, 0)
+                            for m in range(-2, 3):
+                                frame[int(xy[i][j][0]) + n][int(xy[i][j][1]) + m] = (0, 255, 0)
+
+    if circles is not None:
+        circles = np.uint16(np.around(circles))
+        for i in circles[0, :]:
+            cv2.circle(frame, (i[0], i[1]), i[2], (0, 255, 0), 2)
+            cv2.circle(frame, (i[0], i[1]), 2, (0, 0, 255), 3)
 
     if vision:
         cv2.imshow("TicTacToe", frame)
