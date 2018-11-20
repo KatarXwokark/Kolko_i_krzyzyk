@@ -9,6 +9,36 @@ img_counter = 0
 
 vision = False
 
+def line_equation(x1, y1, x2, y2):
+    temp = np.zeros((1, 2))
+    temp[0][0] = (y1 - y2) / (x1 - x2)
+    temp[0][1] = (y2 * x1 - x2 * y1) / (x1 - x2)
+    return temp
+
+def detection(crosses, circles, x1, y1, x2, y2, x3, y3, x4, y4):
+    xy12 = line_equation(x1, y1, x2, y2)
+    xy23 = line_equation(x2, y2, x3, y3)
+    xy34 = line_equation(x3, y3, x4, y4)
+    xy41 = line_equation(x4, y4, x1, y1)
+    #print(xy12, xy23, xy34, xy41)
+    if xy12[0][1] < xy34[0][1]:
+        temp = xy34
+        xy34 = xy12
+        xy12 = temp
+    if xy23[0][1] < xy41[0][1]:
+        temp = xy23
+        xy23 = xy41
+        xy41 = temp
+    for cross in crosses:
+        if cross[0][1] <= xy12[0][0] * cross[0][0] + xy12[0][1] and cross[0][1] <= xy23[0][0] * cross[0][0] + xy23[0][1]:
+            if cross[0][1] >= xy34[0][0] * cross[0][0] + xy34[0][1] and cross[0][1] >= xy41[0][0] * cross[0][0] + xy41[0][1]:
+                return ("X", cross)
+    for circle in circles:
+        if circle[0][1] <= xy12[0][0] * circle[0][0] + xy12[0][1] and circle[0][1] <= xy23[0][0] * circle[0][0] + xy23[0][1]:
+            if circle[0][1] >= xy34[0][0] * circle[0][0] + xy34[0][1] and circle[0][1] >= xy41[0][0] * circle[0][0] + xy41[0][1]:
+                return ("O", circle[0])
+    return (" ", np.zeros((3)))
+
 while True:
     plansza = [["","",""],["","",""],["","",""]]
 
@@ -31,7 +61,7 @@ while True:
     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 20,
                             param1 = 50, param2 = 30, minRadius = 0, maxRadius = 0)
 
-    if lines is not None and len(lines) < 50:
+    if lines is not None and circles is not None and len(lines) < 50:
         newlines = np.zeros((4, 1, 2))
         newlines[0] = lines[0]
         moe = 0.1
@@ -59,10 +89,7 @@ while True:
                 y1 = int(y0 + 1000*(a))
                 x2 = int(x0 - 1000*(-b))
                 y2 = int(y0 - 1000*(a))
-                temp = np.zeros((1, 2))
-                temp[0][0] = (y1 - y2)/(x1 - x2)
-                temp[0][1] = (y2 * x1 - x2 * y1) / (x1 - x2)
-                newlines[i] = temp
+                newlines[i] = line_equation(x1, y1, x2, y2)
                 cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
             xy = np.zeros((4, 4, 2))
@@ -99,26 +126,38 @@ while True:
             xy[3][3][1] = xy[3][2][1] + (xy[3][2][1] - xy[3][1][1])
             xy[3][3][0] = xy[3][2][0] + (xy[3][2][0] - xy[3][1][0])
 
-            h = 0
             for i in range(4):
                 for j in range(4):
-                    if xy[i][j][1] < 0 or xy[i][j][1] >= len(frame[0]):
-                        h = 1
-                    if xy[i][j][0] < 0 or xy[i][j][0] >= len(frame):
-                        h = 1
-            if h == 0:
-                #print(xy)
-                for i in range(4):
-                    for j in range(4):
-                        for n in range(-2, 3):
-                            for m in range(-2, 3):
+                    for n in range(-2*(i+1), 3*(i+1)):
+                        for m in range(-2*(j+1), 3*(j+1)):
+                            if int(xy[i][j][0]) + n >= 0 and int(xy[i][j][0]) + n < len(frame) and int(
+                                    xy[i][j][1]) + n >= 0 and int(xy[i][j][1]) + n < len(frame[0]):
                                 frame[int(xy[i][j][0]) + n][int(xy[i][j][1]) + m] = (0, 255, 0)
 
-    if circles is not None:
-        circles = np.uint16(np.around(circles))
-        for i in circles[0, :]:
-            cv2.circle(frame, (i[0], i[1]), i[2], (0, 255, 0), 2)
-            cv2.circle(frame, (i[0], i[1]), 2, (0, 0, 255), 3)
+            newcircles = np.zeros((3, 3, 3))
+            for i in range(3):
+                for j in range(3):
+                    cv2.line(frame, (int(xy[0+i][0+j][1]), int(xy[0+i][0+j][0])),
+                             (int(xy[0+i][1+j][1]), int(xy[0+i][1+j][0])), (0, 0, 255), 2)
+                    cv2.line(frame, (int(xy[0 + i][1 + j][1]), int(xy[0 + i][1 + j][0])),
+                             (int(xy[1 + i][1 + j][1]), int(xy[1 + i][1 + j][0])), (0, 0, 255), 2)
+                    cv2.line(frame, (int(xy[1 + i][1 + j][1]), int(xy[1 + i][1 + j][0])),
+                             (int(xy[1 + i][0 + j][1]), int(xy[1 + i][0 + j][0])), (0, 0, 255), 2)
+                    cv2.line(frame, (int(xy[1 + i][0 + j][1]), int(xy[1 + i][0 + j][0])),
+                             (int(xy[0 + i][0 + j][1]), int(xy[0 + i][0 + j][0])), (0, 0, 255), 2)
+                    temp = detection([], circles, xy[0+i][0+j][1], xy[0+i][0+j][0], xy[0+i][1+j][1],
+                              xy[0+i][1+j][0], xy[1+i][1+j][1], xy[1+i][1+j][0], xy[1+i][0+j][1], xy[1+i][0+j][0])
+                    plansza[i][j] = temp[0]
+                    newcircles[i][j] = temp[1]
+            if plansza != [[" "," "," "],[" "," "," "],[" "," "," "]]:
+                print(plansza)
+
+            if newcircles is not None:
+                newcircles = np.uint16(np.around(newcircles))
+                for i in range(3):
+                    for j in newcircles[i]:
+                        cv2.circle(frame, (j[0], j[1]), j[2], (0, 255, 0), 2)
+                        cv2.circle(frame, (j[0], j[1]), 2, (0, 0, 255), 3)
 
     if vision:
         cv2.imshow("TicTacToe", frame)
