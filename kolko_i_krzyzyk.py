@@ -11,8 +11,12 @@ vision = False
 
 def line_equation(x1, y1, x2, y2):
     temp = np.zeros((1, 2))
-    temp[0][0] = (y1 - y2) / (x1 - x2)
-    temp[0][1] = (y2 * x1 - x2 * y1) / (x1 - x2)
+    if x1 - x2 != 0:
+        temp[0][0] = (y1 - y2) / (x1 - x2)
+        temp[0][1] = (y2 * x1 - x2 * y1) / (x1 - x2)
+    else:
+        temp[0][0] = (y1 - y2) / 0.00001
+        temp[0][1] = (y2 * x1 - x2 * y1) / 0.00001
     return temp
 
 def detection(crosses, circles, x1, y1, x2, y2, x3, y3, x4, y4):
@@ -32,12 +36,12 @@ def detection(crosses, circles, x1, y1, x2, y2, x3, y3, x4, y4):
     for cross in crosses:
         if cross[0][1] <= xy12[0][0] * cross[0][0] + xy12[0][1] and cross[0][1] <= xy23[0][0] * cross[0][0] + xy23[0][1]:
             if cross[0][1] >= xy34[0][0] * cross[0][0] + xy34[0][1] and cross[0][1] >= xy41[0][0] * cross[0][0] + xy41[0][1]:
-                return ("X", cross)
-    for circle in circles:
-        if circle[0][1] <= xy12[0][0] * circle[0][0] + xy12[0][1] and circle[0][1] <= xy23[0][0] * circle[0][0] + xy23[0][1]:
-            if circle[0][1] >= xy34[0][0] * circle[0][0] + xy34[0][1] and circle[0][1] >= xy41[0][0] * circle[0][0] + xy41[0][1]:
-                return ("O", circle[0])
-    return (" ", np.zeros((3)))
+                return ("X", cross[0])
+    for circle in circles[0]:
+        if circle[1] <= xy12[0][0] * circle[0] + xy12[0][1] and circle[1] <= xy23[0][0] * circle[0] + xy23[0][1]:
+            if circle[1] >= xy34[0][0] * circle[0] + xy34[0][1] and circle[1] >= xy41[0][0] * circle[0] + xy41[0][1]:
+                return ("O", circle)
+    return (" ", np.zeros((1)))
 
 while True:
     plansza = [["","",""],["","",""],["","",""]]
@@ -56,10 +60,10 @@ while True:
 
     img = cv2.erode(img, (5, 5), iterations=5)
 
-    lines = cv2.HoughLines(img, 1, np.pi / 30, 200)
-
     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 20,
-                            param1 = 50, param2 = 30, minRadius = 0, maxRadius = 0)
+                            param1=50, param2=30, minRadius=0, maxRadius=0)
+
+    lines = cv2.HoughLines(img, 1, np.pi / 30, 200)
 
     if lines is not None and circles is not None and len(lines) < 50:
         newlines = np.zeros((4, 1, 2))
@@ -135,7 +139,8 @@ while True:
                                 frame[int(xy[i][j][0]) + n][int(xy[i][j][1]) + m] = (0, 255, 0)
 
             newcircles = np.zeros((3, 3, 3))
-            for i in range(3):
+            newcrosses = np.zeros((3, 3, 2))
+            for i in range(3): #[[(xy[0][0][1] + xy[1][0][1])/2, (xy[0][0][0] + xy[0][1][0])/2]]
                 for j in range(3):
                     cv2.line(frame, (int(xy[0+i][0+j][1]), int(xy[0+i][0+j][0])),
                              (int(xy[0+i][1+j][1]), int(xy[0+i][1+j][0])), (0, 0, 255), 2)
@@ -148,9 +153,16 @@ while True:
                     temp = detection([], circles, xy[0+i][0+j][1], xy[0+i][0+j][0], xy[0+i][1+j][1],
                               xy[0+i][1+j][0], xy[1+i][1+j][1], xy[1+i][1+j][0], xy[1+i][0+j][1], xy[1+i][0+j][0])
                     plansza[i][j] = temp[0]
-                    newcircles[i][j] = temp[1]
+                    if len(temp[1]) == 3:
+                        newcircles[i][j] = temp[1]
+                    elif len(temp[1]) == 2:
+                        newcrosses[i][j] = temp[1]
             if plansza != [[" "," "," "],[" "," "," "],[" "," "," "]]:
-                print(plansza)
+                print("")
+                print(plansza[0])
+                print(plansza[1])
+                print(plansza[2])
+                print("")
 
             if newcircles is not None:
                 newcircles = np.uint16(np.around(newcircles))
@@ -158,6 +170,7 @@ while True:
                     for j in newcircles[i]:
                         cv2.circle(frame, (j[0], j[1]), j[2], (0, 255, 0), 2)
                         cv2.circle(frame, (j[0], j[1]), 2, (0, 0, 255), 3)
+
 
     if vision:
         cv2.imshow("TicTacToe", frame)
