@@ -24,7 +24,6 @@ def detection(crosses, circles, x1, y1, x2, y2, x3, y3, x4, y4):
     xy23 = line_equation(x2, y2, x3, y3)
     xy34 = line_equation(x3, y3, x4, y4)
     xy41 = line_equation(x4, y4, x1, y1)
-    #print(xy12, xy23, xy34, xy41)
     if xy12[0][1] < xy34[0][1]:
         temp = xy34
         xy34 = xy12
@@ -33,14 +32,14 @@ def detection(crosses, circles, x1, y1, x2, y2, x3, y3, x4, y4):
         temp = xy23
         xy23 = xy41
         xy41 = temp
-    for cross in crosses:
-        if cross[0][1] <= xy12[0][0] * cross[0][0] + xy12[0][1] and cross[0][1] <= xy23[0][0] * cross[0][0] + xy23[0][1]:
-            if cross[0][1] >= xy34[0][0] * cross[0][0] + xy34[0][1] and cross[0][1] >= xy41[0][0] * cross[0][0] + xy41[0][1]:
-                return ("X", cross[0])
     for circle in circles[0]:
         if circle[1] <= xy12[0][0] * circle[0] + xy12[0][1] and circle[1] <= xy23[0][0] * circle[0] + xy23[0][1]:
             if circle[1] >= xy34[0][0] * circle[0] + xy34[0][1] and circle[1] >= xy41[0][0] * circle[0] + xy41[0][1]:
                 return ("O", circle)
+    for cross in crosses[0]:
+        if cross[1] <= xy12[0][0] * cross[0] + xy12[0][1] and cross[1] <= xy23[0][0] * cross[0] + xy23[0][1]:
+            if cross[1] >= xy34[0][0] * cross[0] + xy34[0][1] and cross[1] >= xy41[0][0] * cross[0] + xy41[0][1]:
+                return ("X", cross)
     return (" ", np.zeros((1)))
 
 while True:
@@ -52,7 +51,7 @@ while True:
 
     img = cv2.GaussianBlur(img, (5, 5), 0)
 
-    retTresh, img = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY_INV)
+    retTresh, img = cv2.threshold(img, 140, 255, cv2.THRESH_BINARY_INV)
 
     # img = cv2.Canny(img, 50, 150, apertureSize=3)
 
@@ -61,7 +60,8 @@ while True:
     img = cv2.erode(img, (5, 5), iterations=5)
 
     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 20,
-                            param1=50, param2=30, minRadius=0, maxRadius=0)
+                            param1=50, param2=27, minRadius=min(len(img), len(img[0]))//16,
+                               maxRadius=min(len(img), len(img[0]))//3)
 
     lines = cv2.HoughLines(img, 1, np.pi / 30, 200)
 
@@ -138,9 +138,25 @@ while True:
                                     xy[i][j][1]) + n >= 0 and int(xy[i][j][1]) + n < len(frame[0]):
                                 frame[int(xy[i][j][0]) + n][int(xy[i][j][1]) + m] = (0, 255, 0)
 
+            tempcrosses = []
+            for i in range(3):
+                for j in range(3):
+                    for n in range(-15,16):
+                        for m in range(-10,11):
+                            if img[int((xy[i][j][0] + xy[i+1][j][0])/2) + n][int((xy[i][j][1] + xy[i][j+1][1])/2) + m] == 255:
+                                if img[int(((xy[i][j][0] + xy[i + 1][j][0]) / 2 + xy[i + 1][j][0]) / 2) + n][
+                                            int((xy[i][j][1] + xy[i][j + 1][1]) / 2) + m] == 0 or img[
+                                    int((xy[i][j][0] + xy[i + 1][j][0]) / 2) + n][
+                                            int(((xy[i][j][1] + xy[i][j + 1][1]) / 2 + xy[i][j + 1][1]) / 2) + m] == 0:
+                                        tempcrosses += [[xy[i][j][0] + n, xy[i][j][1] + m]]
+
+            crosses = np.zeros((1, len(tempcrosses), 2))
+            for i in range(len(tempcrosses)):
+                crosses[0][i][0] = tempcrosses[i][0]
+                crosses[0][i][1] = tempcrosses[i][1]
             newcircles = np.zeros((3, 3, 3))
             newcrosses = np.zeros((3, 3, 2))
-            for i in range(3): #[[(xy[0][0][1] + xy[1][0][1])/2, (xy[0][0][0] + xy[0][1][0])/2]]
+            for i in range(3):
                 for j in range(3):
                     cv2.line(frame, (int(xy[0+i][0+j][1]), int(xy[0+i][0+j][0])),
                              (int(xy[0+i][1+j][1]), int(xy[0+i][1+j][0])), (0, 0, 255), 2)
@@ -150,13 +166,14 @@ while True:
                              (int(xy[1 + i][0 + j][1]), int(xy[1 + i][0 + j][0])), (0, 0, 255), 2)
                     cv2.line(frame, (int(xy[1 + i][0 + j][1]), int(xy[1 + i][0 + j][0])),
                              (int(xy[0 + i][0 + j][1]), int(xy[0 + i][0 + j][0])), (0, 0, 255), 2)
-                    temp = detection([], circles, xy[0+i][0+j][1], xy[0+i][0+j][0], xy[0+i][1+j][1],
+                    temp = detection(crosses, circles, xy[0+i][0+j][1], xy[0+i][0+j][0], xy[0+i][1+j][1],
                               xy[0+i][1+j][0], xy[1+i][1+j][1], xy[1+i][1+j][0], xy[1+i][0+j][1], xy[1+i][0+j][0])
                     plansza[i][j] = temp[0]
                     if len(temp[1]) == 3:
                         newcircles[i][j] = temp[1]
                     elif len(temp[1]) == 2:
                         newcrosses[i][j] = temp[1]
+
             if plansza != [[" "," "," "],[" "," "," "],[" "," "," "]]:
                 print("")
                 print(plansza[0])
@@ -164,12 +181,19 @@ while True:
                 print(plansza[2])
                 print("")
 
-            if newcircles is not None:
-                newcircles = np.uint16(np.around(newcircles))
-                for i in range(3):
-                    for j in newcircles[i]:
-                        cv2.circle(frame, (j[0], j[1]), j[2], (0, 255, 0), 2)
-                        cv2.circle(frame, (j[0], j[1]), 2, (0, 0, 255), 3)
+            newcircles = np.uint16(np.around(newcircles))
+            for i in range(3):
+                for j in newcircles[i]:
+                    cv2.circle(frame, (j[0], j[1]), j[2], (0, 255, 0), 2)
+                    cv2.circle(frame, (j[0], j[1]), 2, (255, 0, 0), 3)
+
+            for i in range(3):
+                for j in range(3):
+                    if newcrosses[i][j][0] != 0 and newcrosses[i][j][1] != 0:
+                        cv2.line(frame, (int(xy[i][j][1]), int(xy[i][j][0])), (
+                            int(xy[i + 1][j + 1][1]), int(xy[i + 1][j + 1][0])), (0, 255, 255), 2)
+                        cv2.line(frame, (int(xy[i + 1][j][1]), int(xy[i + 1][j][0])), (
+                            int(xy[i][j + 1][1]), int(xy[i][j + 1][0])), (0, 255, 255), 2)
 
 
     if vision:
