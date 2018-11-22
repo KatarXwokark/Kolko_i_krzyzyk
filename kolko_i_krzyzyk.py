@@ -35,10 +35,11 @@ def detection(crosses, circles, x1, y1, x2, y2, x3, y3, x4, y4):
         temp = xy23
         xy23 = xy41
         xy41 = temp
-    for circle in circles[0]:
-        if circle[1] <= xy12[0][0] * circle[0] + xy12[0][1] and circle[1] <= xy23[0][0] * circle[0] + xy23[0][1]:
-            if circle[1] >= xy34[0][0] * circle[0] + xy34[0][1] and circle[1] >= xy41[0][0] * circle[0] + xy41[0][1]:
-                return ("O", circle)
+    if circles is not None:
+        for circle in circles[0]:
+            if circle[1] <= xy12[0][0] * circle[0] + xy12[0][1] and circle[1] <= xy23[0][0] * circle[0] + xy23[0][1]:
+                if circle[1] >= xy34[0][0] * circle[0] + xy34[0][1] and circle[1] >= xy41[0][0] * circle[0] + xy41[0][1]:
+                    return ("O", circle)
     for cross in crosses[0]:
         if cross[1] <= xy12[0][0] * cross[0] + xy12[0][1] and cross[1] <= xy23[0][0] * cross[0] + xy23[0][1]:
             if cross[1] >= xy34[0][0] * cross[0] + xy34[0][1] and cross[1] >= xy41[0][0] * cross[0] + xy41[0][1]:
@@ -68,7 +69,7 @@ while True:
 
     lines = cv2.HoughLines(img, 1, np.pi / 30, 200)
 
-    if lines is not None and circles is not None and len(lines) < 50:
+    if lines is not None and len(lines) < 50:
         newlines = np.zeros((4, 1, 2))
         newlines[0] = lines[0]
         moe = 0.1
@@ -141,7 +142,7 @@ while True:
                                 frame[int(xy[i][j][0]) + n][int(xy[i][j][1]) + m] = (0, 255, 0)
 
             tempcrosses = []
-            zakres = 15
+            zakres = 20
             for i in range(3):
                 for j in range(3):
                     for n in range(-zakres, zakres + 1):
@@ -151,11 +152,19 @@ while True:
                                 if zawiera_sie(frame, int(((xy[i][j][0] + xy[i+1][j][0])/2 + xy[i + 1][j][0]) / 2), int(
                                     (xy[i][j][1] + xy[i][j+1][1])/2), n, m) and zawiera_sie(
                                     frame, int((xy[i][j][0] + xy[i+1][j][0])/2), int((
-                                    (xy[i][j][1] + xy[i][j+1][1])/2 + xy[i][j + 1][1]) / 2), n, m) and (img[
+                                    (xy[i][j][1] + xy[i][j+1][1])/2 + xy[i][j + 1][1]) / 2), n, m) and zawiera_sie(
+                                    frame, int(((xy[i][j][0] + xy[i+1][j][0])/2 + xy[i][j][0]) / 2), int(
+                                    (xy[i][j][1] + xy[i][j+1][1])/2), n, m) and zawiera_sie(
+                                    frame, int((xy[i][j][0] + xy[i+1][j][0])/2), int((
+                                    (xy[i][j][1] + xy[i][j+1][1])/2 + xy[i][j][1]) / 2), n, m) and (img[
                                     int(((xy[i][j][0] + xy[i + 1][j][0]) / 2 + xy[i + 1][j][0]) / 2) + n][
-                                    int((xy[i][j][1] + xy[i][j + 1][1]) / 2) + m] == 0 or img[
+                                    int((xy[i][j][1] + xy[i][j + 1][1]) / 2) + m] == 0 and img[
                                     int((xy[i][j][0] + xy[i + 1][j][0]) / 2) + n][
-                                    int(((xy[i][j][1] + xy[i][j + 1][1]) / 2 + xy[i][j + 1][1]) / 2) + m] == 0):
+                                    int(((xy[i][j][1] + xy[i][j + 1][1]) / 2 + xy[i][j + 1][1]) / 2) + m] == 0)and (img[
+                                    int(((xy[i][j][0] + xy[i+1][j][0])/2 + xy[i][j][0]) / 2) + n][
+                                    int((xy[i][j][1] + xy[i][j + 1][1]) / 2) + m] == 0 and img[
+                                    int((xy[i][j][0] + xy[i + 1][j][0]) / 2) + n][
+                                    int(((xy[i][j][1] + xy[i][j+1][1])/2 + xy[i][j][1]) / 2) + m] == 0):
                                         tempcrosses += [[xy[i][j][0] + n, xy[i][j][1] + m]]
 
             crosses = np.zeros((1, len(tempcrosses), 2))
@@ -175,19 +184,18 @@ while True:
                     cv2.line(frame, (int(xy[1 + i][0 + j][1]), int(xy[1 + i][0 + j][0])),
                              (int(xy[0 + i][0 + j][1]), int(xy[0 + i][0 + j][0])), (0, 0, 255), 2)
                     temp = detection(crosses, circles, xy[0+i][0+j][1], xy[0+i][0+j][0], xy[0+i][1+j][1],
-                              xy[0+i][1+j][0], xy[1+i][1+j][1], xy[1+i][1+j][0], xy[1+i][0+j][1], xy[1+i][0+j][0])
+                        xy[0+i][1+j][0], xy[1+i][1+j][1], xy[1+i][1+j][0], xy[1+i][0+j][1], xy[1+i][0+j][0])
                     plansza[i][j] = temp[0]
                     if len(temp[1]) == 3:
                         newcircles[i][j] = temp[1]
                     elif len(temp[1]) == 2:
                         newcrosses[i][j] = temp[1]
 
-            if plansza != [[" "," "," "],[" "," "," "],[" "," "," "]]:
-                print("")
-                print(plansza[0])
-                print(plansza[1])
-                print(plansza[2])
-                print("")
+            print("")
+            print(plansza[0])
+            print(plansza[1])
+            print(plansza[2])
+            print("")
 
             newcircles = np.uint16(np.around(newcircles))
             for i in range(3):
