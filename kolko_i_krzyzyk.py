@@ -9,6 +9,9 @@ img_counter = 0
 
 vision = False
 
+def zawiera_sie(frame, x, y, n, m):
+    return x + n >= 0 and x + n < len(frame) and y + m >= 0 and y + m < len(frame[0])
+
 def line_equation(x1, y1, x2, y2):
     temp = np.zeros((1, 2))
     if x1 - x2 != 0:
@@ -60,7 +63,7 @@ while True:
     img = cv2.erode(img, (5, 5), iterations=5)
 
     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 20,
-                            param1=50, param2=27, minRadius=min(len(img), len(img[0]))//16,
+                            param1=50, param2=27, minRadius=min(len(img), len(img[0]))//15,
                                maxRadius=min(len(img), len(img[0]))//3)
 
     lines = cv2.HoughLines(img, 1, np.pi / 30, 200)
@@ -134,20 +137,25 @@ while True:
                 for j in range(4):
                     for n in range(-2*(i+1), 3*(i+1)):
                         for m in range(-2*(j+1), 3*(j+1)):
-                            if int(xy[i][j][0]) + n >= 0 and int(xy[i][j][0]) + n < len(frame) and int(
-                                    xy[i][j][1]) + n >= 0 and int(xy[i][j][1]) + n < len(frame[0]):
+                            if zawiera_sie(frame, int(xy[i][j][0]), int(xy[i][j][1]), n, m):
                                 frame[int(xy[i][j][0]) + n][int(xy[i][j][1]) + m] = (0, 255, 0)
 
             tempcrosses = []
+            zakres = 15
             for i in range(3):
                 for j in range(3):
-                    for n in range(-15,16):
-                        for m in range(-10,11):
-                            if img[int((xy[i][j][0] + xy[i+1][j][0])/2) + n][int((xy[i][j][1] + xy[i][j+1][1])/2) + m] == 255:
-                                if img[int(((xy[i][j][0] + xy[i + 1][j][0]) / 2 + xy[i + 1][j][0]) / 2) + n][
-                                            int((xy[i][j][1] + xy[i][j + 1][1]) / 2) + m] == 0 or img[
+                    for n in range(-zakres, zakres + 1):
+                        for m in range(-zakres, zakres + 1):
+                            if zawiera_sie(frame, int((xy[i][j][0] + xy[i+1][j][0])/2), int((xy[i][j][1] + xy[i][j+1][1])/2), n, m) and img[
+                                int((xy[i][j][0] + xy[i+1][j][0])/2) + n][int((xy[i][j][1] + xy[i][j+1][1])/2) + m] == 255:
+                                if zawiera_sie(frame, int(((xy[i][j][0] + xy[i+1][j][0])/2 + xy[i + 1][j][0]) / 2), int(
+                                    (xy[i][j][1] + xy[i][j+1][1])/2), n, m) and zawiera_sie(
+                                    frame, int((xy[i][j][0] + xy[i+1][j][0])/2), int((
+                                    (xy[i][j][1] + xy[i][j+1][1])/2 + xy[i][j + 1][1]) / 2), n, m) and (img[
+                                    int(((xy[i][j][0] + xy[i + 1][j][0]) / 2 + xy[i + 1][j][0]) / 2) + n][
+                                    int((xy[i][j][1] + xy[i][j + 1][1]) / 2) + m] == 0 or img[
                                     int((xy[i][j][0] + xy[i + 1][j][0]) / 2) + n][
-                                            int(((xy[i][j][1] + xy[i][j + 1][1]) / 2 + xy[i][j + 1][1]) / 2) + m] == 0:
+                                    int(((xy[i][j][1] + xy[i][j + 1][1]) / 2 + xy[i][j + 1][1]) / 2) + m] == 0):
                                         tempcrosses += [[xy[i][j][0] + n, xy[i][j][1] + m]]
 
             crosses = np.zeros((1, len(tempcrosses), 2))
